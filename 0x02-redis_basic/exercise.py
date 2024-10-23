@@ -1,10 +1,36 @@
 #!/usr/bin/env python3
 """
-Module for caching and storing data in Redis
+Module for caching and counting method calls in Redis
 """
 import redis
 import uuid
-from typing import Union
+from typing import Callable, Union, Optional
+import functools
+
+
+def count_calls(method: Callable) -> Callable:
+    """
+    Decorator to count how many times a method is called.
+    Args:
+        method (Callable): The method to be decorated.
+    Returns:
+        Callable: The wrapped function that increments the call count.
+    """
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        """
+        Wrapper function that increments the call count in Redis.
+        """
+        # Get the qualified name of the method
+        key = method.__qualname__
+
+        # Increment the call count using Redis INCR command
+        self._redis.incr(key)
+
+        # Call the original method
+        return method(self, *args, **kwargs)
+
+    return wrapper
 
 
 class Cache:
@@ -15,6 +41,7 @@ class Cache:
         self._redis = redis.Redis()
         self._redis.flushdb()
 
+    @count_calls
     def store(self, data: Union[str, bytes, int, float]) -> str:
         """
         Store data in Redis and return the key.
@@ -34,7 +61,8 @@ class Cache:
             key (str): The key to retrieve data from.
             fn (Callable, optional): A function to apply to the retrieved data.
         Returns:
-            Union[str, bytes, int, float, None]: The retrieved data, possibly transformed.
+            Union[str, bytes, int, float, None]:
+            The retrieved data, possibly transformed.
         """
         data = self._redis.get(key)
         if data is None:
