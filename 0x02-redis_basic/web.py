@@ -10,6 +10,7 @@ from functools import wraps
 # Initialize the Redis client
 r = redis.Redis()
 
+
 def cache_page(method: Callable) -> Callable:
     """
     Decorator to cache the result of a web page request in Redis.
@@ -36,6 +37,7 @@ def cache_page(method: Callable) -> Callable:
         return page_content
 
     return wrapper
+
 
 @cache_page
 def get_page(url: str) -> str:
